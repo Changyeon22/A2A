@@ -34,7 +34,8 @@ from tools.planning_tool.prompts import (
     generate_summary_prompt,
     generate_expansion_prompt
 )
-from tools.planning_tool.configs import personas, DOCUMENT_TEMPLATES
+from tools.planning_tool.configs import DOCUMENT_TEMPLATES
+from tools.persona_system import get_persona_by_key
 
 # OpenAI 클라이언트 초기화
 client = OpenAI()
@@ -84,8 +85,8 @@ def execute_create_new_planning_document(user_input: str, writer_persona_name: s
     if template_name not in DOCUMENT_TEMPLATES:
         return {"status": "error", "message": f"유효하지 않은 문서 템플릿 이름입니다. 현재 사용 가능한 템플릿: {', '.join(list(DOCUMENT_TEMPLATES.keys()))}"}
 
-    writer_persona = personas[writer_persona_name]
-    reviewer_persona = personas[reviewer_persona_name]
+    writer_persona = get_persona_by_key(writer_persona_name)
+    reviewer_persona = get_persona_by_key(reviewer_persona_name)
     sections = DOCUMENT_TEMPLATES[template_name]
     
     try:
@@ -178,7 +179,7 @@ def execute_collaboration_planning(
         return {"status": "error", "message": "업무를 분배할 페르소나는 최소 2개 이상 지정해야 합니다."}
 
     try:
-        writer_persona = personas[writer_persona_name]
+        writer_persona = get_persona_by_key(writer_persona_name)
         sections = DOCUMENT_TEMPLATES[base_document_type]
 
         # 0. 프로젝트 계획서 초안 생성 (tab_collaboration의 1번 단계)
@@ -197,7 +198,7 @@ def execute_collaboration_planning(
         # 1. 각 페르소나에게 업무 분배 시뮬레이션
         allocated_tasks = []
         for p_name in allocate_to_persona_names:
-            persona = personas[p_name]
+            persona = get_persona_by_key(p_name)
             persona_info = f"너는 '{p_name}' [{persona['직책']}] 페르소나야.\n{_persona_to_description(persona)}"
             task_allocation_prompt = generate_task_allocation_prompt(
                 persona_info=persona_info, 
@@ -231,7 +232,7 @@ def execute_collaboration_planning(
         logger.debug(f"Integrated plan: {integrated_plan[:200]}...")
 
         # 3. 계획서 검토
-        reviewer_persona_obj = personas[review_by_persona_name]
+        reviewer_persona_obj = get_persona_by_key(review_by_persona_name)
         reviewer_persona_info = f"너는 '{review_by_persona_name}' [{reviewer_persona_obj['직책']}] 페르소나야.\n{_persona_to_description(reviewer_persona_obj)}"
         reviewer_prompt = generate_task_review_prompt(
             persona_info=reviewer_persona_info, 
@@ -384,7 +385,7 @@ def execute_expand_notion_document(
         
         logger.debug(f"Retrieved reference document content length: {len(document_content)}")
 
-        writer = personas[writer_persona_name]
+        writer = get_persona_by_key(writer_persona_name)
         sections_to_expand = DOCUMENT_TEMPLATES[new_doc_type]
 
         # 2. LLM을 사용하여 문서 확장/생성
